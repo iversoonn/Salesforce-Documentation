@@ -1,0 +1,63 @@
+@isTest
+private class BookingTriggerTest {
+
+    @isTest
+    static void testTriggerCreatesPaymentAndGuestsWithUpdatedFields() {
+
+        // Step 1: Create Travel Package
+        TravelPackage__c packageRec = new TravelPackage__c(
+            Name = 'European Delight',
+            Country__c = 'Philippines',
+            Price_Per_Person__c = 2000,
+            Duration_in_Days__c = 3,
+            Places_Covered__c = 'Paris, Rome, Berlin'
+        );
+        insert packageRec;
+
+        // Step 2: Create Customer Info record
+        Customer_Info__c customer = new Customer_Info__c(
+        Name = 'John Doe',
+        Email__c = 'johndoe@email.com',
+        Phone__c = '0912345678',
+        City__c = 'Quezon City',         // ✅ must be from picklist
+        Country__c = 'Philippines',      // ✅ Make sure this is also valid
+        Date_Of_Birth__c = Date.newInstance(1995, 1, 1)
+    );
+    insert customer;
+
+        // Step 3: Create Booking linked to Customer Info and Travel Package
+        Booking__c booking = new Booking__c(
+        Booking_Status__c = 'Pending',
+        Number_of_Travelers__c = 3,
+        Travelling_Start_Date__c = Date.today().addDays(10),
+        TravelPackage__c = packageRec.Id,
+        Preferred_Accommodation__c = 'Guest House',
+        Membership_Chosen_Req__c = 'Gold',
+        Customer__c = customer.Id,
+        Customer_Email__c = 'john.doe@example.com', // ✅ Required
+        Booking_Date__c = Date.today()               // ✅ Required
+    );
+
+        Test.startTest();
+        insert booking;
+        Test.stopTest();
+
+        // Assertions for Booking_Payment__c
+        List<Booking_Payment__c> payments = [
+            SELECT Id, Booking__c, Payment_Status__c 
+            FROM Booking_Payment__c 
+            WHERE Booking__c = :booking.Id
+        ];
+        System.assertEquals(1, payments.size(), 'Payment should be created.');
+        System.assertEquals('Pending', payments[0].Payment_Status__c);
+
+        // Assertions for Booking_Guest__c
+        List<Booking_Guest__c> guests = [
+            SELECT Id, Booking__c, Name 
+            FROM Booking_Guest__c 
+            WHERE Booking__c = :booking.Id
+        ];
+        System.assertEquals(3, guests.size(), 'Three guests should be created.');
+        System.assertEquals('Guest 1', guests[0].Name);
+    }
+}
